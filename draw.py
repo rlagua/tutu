@@ -6,7 +6,7 @@ class Draw3D:
         # 创建3D折线图
         self.fig = go.Figure()
 
-    def add_lines(self, lines):
+    def add_lines(self, lines, filename):
         keys = lines.keys()
         xyz = ["var.group[0].here[0]",
                "var.group[0].here[1]", "var.group[0].here[2]"]
@@ -22,7 +22,7 @@ class Draw3D:
                 y=lines[xyz[1]],
                 z=lines[xyz[2]],
                 mode='lines',
-                name="here"
+                name=f"{filename}here"
             ))
 
         xyz2 = ["var.group[0].setpoint[0]",
@@ -41,7 +41,7 @@ class Draw3D:
                 y=lines[xyz2[1]],
                 z=lines[xyz2[2]],
                 mode='lines',
-                name="setpoint"
+                name=f"{filename}setpoint"
             ))
 
     def set_range(self):

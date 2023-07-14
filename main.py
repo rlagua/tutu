@@ -5,18 +5,20 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QListWidgetItem, QHeaderV
 from PyQt5.QtGui import QTextCursor, QStandardItem, QIcon, QStandardItemModel
 from PyQt5.QtCore import Qt
 
+from threading import Thread
+
 
 import sys
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class UiMain(Ui_MainWindow):
     def __init__(self, MainWindow) -> None:
         super().__init__()
         super().setupUi(MainWindow)
-        # 重定向 sys.stdout
-        # self.stdout_orig = sys.stdout
-        # sys.stdout = self
-        # sys.stderr = self
         self.reinit()
         self.bind()
 
@@ -27,42 +29,35 @@ class UiMain(Ui_MainWindow):
         self._model = QStandardItemModel()
         self.treeView.setModel(self._model)
         self._model.setHorizontalHeaderLabels(["文件", "类型"])
-        generateDirectoryTree(self._model.invisibleRootItem(), r"E:\Code\tutu\data")
+        self.treeView.setColumnWidth(0, 500)
+        generateDirectoryTree(self._model.invisibleRootItem(), r"E:\A_CODE\tutu\data")
 
     def bind(self):
         """绑定槽和信号"""
         pass
-        self.pushButton.clicked.connect(self.draw)
+        self.pushButton.clicked.connect(self.thead_draw)
+
+    def thead_draw(self):
+        t1 = Thread(target=self.draw)
+        t1.start()
 
     def draw(self):
-        index = self.treeView.currentIndex()
-        data = self._model.data(index, Qt.UserRole)
+        draw = Draw3D()
+        items = get_checked_items(self._model.invisibleRootItem())
+        logger.info(len(items))
+        print(len(items))
+        if len(items) < 1:
+            return
         try:
-            draw = Draw3D()
-            lines = self.reader.read_file(data)
-            print(*lines, end='\n')
-            draw.add_lines(lines=lines)
+            for item in items:
+                data = item.data(Qt.UserRole)
+                lines = self.reader.read_file(data)
+                draw.add_lines(lines=lines, filename=data)
             draw.show()
-            print(lines)
+            logger.info("succeful")
         except Exception as e:
             print(e)
 
-
-    # def write(self, text):
-    #     """输出重定向方法"""
-    #     # self.textEdit.append(str(text))
-    #     self.textEdit.moveCursor(QTextCursor.End)
-    #     self.textEdit.insertPlainText(text)
-    #     self.textEdit.moveCursor(QTextCursor.End)
-    #     self.textEdit.ensureCursorVisible()
-
-    # def flush(self):
-    #     """输出重定向方法"""
-    #     pass
-
-    # def closeEvent(self, event):
-    #     """恢复sys.stdout"""
-    #     sys.stdout = self.stdout_orig
 
 def generateDirectoryTree(rootItem, directoryPath):
     subs = os.listdir(directoryPath)
@@ -74,9 +69,23 @@ def generateDirectoryTree(rootItem, directoryPath):
         childItem.setCheckable(True)
         rootItem.appendRow(childItem)
         if os.path.isdir(os.path.join(directoryPath, sub)):
+            childItem.setCheckable(False)
             generateDirectoryTree(childItem, os.path.join(directoryPath, sub))
 
 
+def get_checked_items(item):
+    checked_items = []
+
+    # 检查当前项是否被选中
+    if item.checkState() == Qt.Checked:
+        checked_items.append(item)  # 将当前项的数据添加到已选中项列表中
+
+    # 遍历当前项的子项
+    for row in range(item.rowCount()):
+        child_item = item.child(row)
+        checked_items.extend(get_checked_items(child_item))  # 递归调用获取子项的已选中项
+
+    return checked_items
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
